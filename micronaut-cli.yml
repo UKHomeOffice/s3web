@@ -1,0 +1,5 @@
+profile: service
+defaultPackage: uk.me.krupa
+---
+testFramework: spek
+sourceLanguage: kotlin
