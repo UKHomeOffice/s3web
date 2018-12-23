@@ -180,6 +180,42 @@
   </repositories>
   <dependencies>
     <dependency>
+      <groupId>com.oracle.substratevm</groupId>
+      <artifactId>svm</artifactId>
+      <version>1.0.0-rc10</version>
+      <scope>provided</scope>
+      <exclusions>
+        <exclusion>
+          <artifactId>svm-hosted-native-linux-amd64</artifactId>
+          <groupId>com.oracle.substratevm</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>svm-hosted-native-darwin-amd64</artifactId>
+          <groupId>com.oracle.substratevm</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>graal-sdk</artifactId>
+          <groupId>org.graalvm.sdk</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>objectfile</artifactId>
+          <groupId>com.oracle.substratevm</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>pointsto</artifactId>
+          <groupId>com.oracle.substratevm</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>truffle-nfi</artifactId>
+          <groupId>org.graalvm.truffle</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>compiler</artifactId>
+          <groupId>org.graalvm.compiler</groupId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-api</artifactId>
       <version>5.1.0</version>
@@ -252,6 +288,7 @@
     </dependencies>
   </dependencyManagement>
   <properties>
+    <graal.version>1.0.0-rc10</graal.version>
     <jdk.version>8</jdk.version>
     <exec.mainClass>uk.me.krupa.s3web.Application</exec.mainClass>
     <kotlinVersion>1.3.11</kotlinVersion>
