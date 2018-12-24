@@ -5,7 +5,6 @@ import io.micronaut.http.annotation.*
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.CompositeByteBuf
 import io.reactivex.Maybe
-import io.reactivex.Observable
 import io.reactivex.Single
 import mu.KotlinLogging
 import uk.me.krupa.s3web.service.Backend
