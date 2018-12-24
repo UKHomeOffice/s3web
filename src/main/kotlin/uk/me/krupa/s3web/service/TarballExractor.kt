@@ -19,7 +19,7 @@ class TarballExtractor(val backend: Backend) {
             entry.isFile -> {
                 val ary = ByteArray(entry.size.toInt())
                 data.read(ary, 0, ary.size)
-                val fullPath = Paths.get(path, entry.name).toAbsolutePath().toString()
+                val fullPath = Paths.get("/$path", entry.name).toAbsolutePath().toString()
                 backend.uploadObject(fullPath, ary).toObservable().compose {
                     uploadTar(path, data)
                 }

@@ -1,6 +1,8 @@
 package uk.me.krupa.s3web
 
 import io.kotlintest.matchers.collections.shouldContain
+import io.kotlintest.matchers.haveSubstring
+import io.kotlintest.should
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldNotBe
 import io.micronaut.context.ApplicationContext
@@ -8,6 +10,9 @@ import io.micronaut.core.type.Argument
 import io.micronaut.http.*
 import io.micronaut.http.client.HttpClient
 import io.micronaut.runtime.server.EmbeddedServer
+import io.netty.buffer.ByteBuf
+import io.netty.buffer.Unpooled
+import org.apache.commons.compress.utils.IOUtils
 import org.jetbrains.spek.api.Spek
 import org.jetbrains.spek.api.dsl.describe
 import org.jetbrains.spek.api.dsl.it
@@ -65,6 +70,30 @@ object SimplePutGetSpec: Spek({
             }
         }
 
+        listOf(
+                listOf("Uncompressed tar file", "test.tar"),
+                listOf("Compressed tar file", "test.tar.gz"),
+                listOf("ZIP file", "test.zip")
+        ).forEach {(description, filename) ->
+            describe(description) {
+                val data = javaClass.classLoader.getResourceAsStream(filename).use {
+                    IOUtils.toByteArray(it)
+                }
+
+                it("can be uploaded") {
+                    val request = HttpRequest.PUT<ByteBuf>("/$filename", Unpooled.copiedBuffer(data))
+                    request.header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_OCTET_STREAM)
+                    val rsp: HttpResponse<Any> = client.toBlocking().exchange(request)
+                    rsp.status shouldBe HttpStatus.CREATED
+                }
+
+                it("uploaded correct data") {
+                    val rsp = client.toBlocking().retrieve("/$filename/site/index.html", String::class.java)
+                    rsp shouldNotBe null
+                    rsp.should(haveSubstring("<h5>Project Documentation</h5>"))
+                }
+            }
+        }
 
         afterGroup {
             client.close()
