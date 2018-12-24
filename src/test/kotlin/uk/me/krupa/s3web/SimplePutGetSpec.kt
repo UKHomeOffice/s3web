@@ -1,17 +1,17 @@
 package uk.me.krupa.s3web
 
+import io.kotlintest.matchers.collections.shouldContain
 import io.kotlintest.shouldBe
+import io.kotlintest.shouldNotBe
 import io.micronaut.context.ApplicationContext
 import io.micronaut.core.type.Argument
-import io.micronaut.http.HttpHeaders
-import io.micronaut.http.HttpRequest
-import io.micronaut.http.HttpStatus
-import io.micronaut.http.MediaType
+import io.micronaut.http.*
 import io.micronaut.http.client.HttpClient
 import io.micronaut.runtime.server.EmbeddedServer
 import org.jetbrains.spek.api.Spek
 import org.jetbrains.spek.api.dsl.describe
 import org.jetbrains.spek.api.dsl.it
+import java.nio.file.Paths
 import java.util.*
 
 object SimplePutGetSpec: Spek({
@@ -27,10 +27,6 @@ object SimplePutGetSpec: Spek({
         ).forEach { (path, contentType) ->
             describe(path) {
 
-                afterGroup {
-                    client.toBlocking().exchange<Any,String>(HttpRequest.DELETE(path))
-                }
-
                 val content = UUID.randomUUID().toString()
                 it("can be uploaded") {
                     val request = HttpRequest.PUT<String>(
@@ -39,13 +35,33 @@ object SimplePutGetSpec: Spek({
                     request.header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_OCTET_STREAM)
                     val rsp = client.toBlocking().exchange(request, Argument.VOID, Argument.VOID)
                     rsp.status shouldBe HttpStatus.CREATED
+                    rsp.body() shouldBe null
                 }
 
                 it("can be downloaded with content type $contentType") {
-                    val data = client.toBlocking().exchange(path, String::class.java)
-                    data.header("Content-Type") shouldBe contentType
-                    data.body() shouldBe content
+                    val rsp = client.toBlocking().exchange(path, String::class.java)
+                    rsp.header("Content-Type") shouldBe contentType
+                    rsp.body() shouldBe content
                 }
+
+                it ("is listed when requesting a list of files in the parent directory") {
+                    val pathSpec = Paths.get(path)
+                    val rsp = client.toBlocking().exchange(pathSpec.parent.toString(), List::class.java)
+
+                    rsp.header(HttpHeaders.CONTENT_TYPE) shouldBe "application/json"
+                    rsp.body() shouldNotBe null
+                    rsp.body()?.map { it.toString() }?.let {
+                        it shouldContain pathSpec.fileName.toString()
+                    }
+                }
+
+                it("can be deleted") {
+                    val rsp = client.toBlocking().exchange<Any,String>(HttpRequest.DELETE(path))
+                    rsp.status shouldBe HttpStatus.NO_CONTENT
+                    rsp.body() shouldBe null
+                }
+
+
             }
         }
 
