@@ -48,16 +48,17 @@ class SimpleUploadController(
     }
 
     @Put("{path:.*}", consumes = [MediaType.APPLICATION_OCTET_STREAM, MediaType.TEXT_PLAIN] )
-    fun putAny(path: String, @Size(max = MAX_FILE_SIZE) @Body data: CompositeByteBuf): Single<HttpStatus> {
+    fun putAny(path: String, @Size(max = MAX_FILE_SIZE) @Body data: CompositeByteBuf): Single<MutableHttpResponse<MutableList<String>>>? {
         logger.info { "PUT to $path" }
         val flat = data.map { it.directToArray() }.map { it.toList() }.flatten().toByteArray()
 
-        return when {
-            path.endsWith(".tar") -> tarballExtractor.uploadTar(path, TarArchiveInputStream(ByteArrayInputStream(flat))).lastOrError()
-            path.endsWith(".tar.gz") -> tarballExtractor.uploadTar(path, TarArchiveInputStream(GZIPInputStream(ByteArrayInputStream(flat)))).lastOrError()
-            path.endsWith(".zip") -> zipExtractor.uploadZip(path, ZipInputStream(ByteArrayInputStream(flat))).lastOrError()
-            else -> backend.uploadObject("/$path", flat)
-        }.map { HttpStatus.CREATED }.onErrorReturn { HttpStatus.NOT_ACCEPTABLE }
+        val response = when {
+            path.endsWith(".tar") -> tarballExtractor.uploadTar(path, TarArchiveInputStream(ByteArrayInputStream(flat))).toList()
+            path.endsWith(".tar.gz") -> tarballExtractor.uploadTar(path, TarArchiveInputStream(GZIPInputStream(ByteArrayInputStream(flat)))).toList()
+            path.endsWith(".zip") -> zipExtractor.uploadZip(path, ZipInputStream(ByteArrayInputStream(flat))).toList()
+            else -> backend.uploadObject("/$path", flat).map { listOf("/$path") }
+        }.map { HttpResponse.created(it) }.onErrorReturn { HttpResponse.badRequest() }
+        return response
     }
 
 }

@@ -13,10 +13,10 @@ private val logger = KotlinLogging.logger {  }
 class StubBackend: Backend {
     val storage = mutableMapOf<String,ByteArray>()
 
-    override fun uploadObject(path: String, data: ByteArray): Single<Boolean> {
+    override fun uploadObject(path: String, data: ByteArray): Single<String> {
         logger.info { "Uploading $path of size ${data.size}" }
         storage[path] = data
-        return Single.just(true)
+        return Single.just(path)
     }
 
     override fun deleteObject(path: String): Single<Boolean> {
