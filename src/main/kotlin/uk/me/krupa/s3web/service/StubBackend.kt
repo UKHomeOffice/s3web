@@ -9,7 +9,7 @@ import javax.inject.Singleton
 private val logger = KotlinLogging.logger {  }
 
 @Singleton
-@Requires(property = "s3.enabled", value = "false", defaultValue = "true")
+@Requires(property = "backend.mode", value = "stub", defaultValue = "s3")
 class StubBackend: Backend {
     val storage = mutableMapOf<String,ByteArray>()
 

@@ -21,7 +21,7 @@ import java.util.*
 
 object SimplePutGetSpec: Spek({
     describe("Simple PUT and GET specifications") {
-        val embeddedServer : EmbeddedServer = ApplicationContext.run(EmbeddedServer::class.java, mapOf("s3.enabled" to "false"))
+        val embeddedServer : EmbeddedServer = ApplicationContext.run(EmbeddedServer::class.java, mapOf("backend.mode" to "stub"))
         val client : HttpClient = HttpClient.create(embeddedServer.url)
 
         listOf(
