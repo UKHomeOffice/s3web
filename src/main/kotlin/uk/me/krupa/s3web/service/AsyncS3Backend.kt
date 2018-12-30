@@ -21,7 +21,7 @@ private val logger = KotlinLogging.logger {  }
 
 @Singleton
 @Requires(property = "backend.mode", value = "s3", defaultValue = "s3")
-class S3Backend(
+class AsyncS3Backend(
         @Property(name = "aws.s3.region") val region: String,
         @Property(name = "aws.s3.buckety") val bucketName: String,
         @Property(name = "aws.access.key.id") val accessKeyId: String,
@@ -34,6 +34,10 @@ class S3Backend(
     val s3 = S3AsyncClient.builder()
             .let {
                 endpoint?.let { endpoint -> it.endpointOverride(endpoint) } ?: it
+            }
+            .serviceConfiguration {
+                // TODO: https://github.com/aws/aws-sdk-java-v2/issues/953
+                it.checksumValidationEnabled(false)
             }
             .endpointOverride(endpoint)
             .region(Region.of(region))
