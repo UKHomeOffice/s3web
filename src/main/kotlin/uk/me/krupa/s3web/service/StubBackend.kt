@@ -37,7 +37,16 @@ class StubBackend: Backend {
         logger.info { "Listing $path" }
         val moddedPath = if (path.endsWith("/") || path == "") { path } else {"$path/"}
         return Maybe.just(
-                storage.keys.toList().filter { it.startsWith(moddedPath) }.map { it.removePrefix(moddedPath) }
+                storage.keys.toList()
+                        .filter { it.startsWith(moddedPath) }
+                        .map { it.removePrefix(moddedPath) }
+                        .map {
+                            if (it.contains('/')) {
+                                it.substring(0, it.indexOf('/') + 1)
+                            } else {
+                                it
+                            }
+                        }.toSet().toList().sorted()
         )
     }
 

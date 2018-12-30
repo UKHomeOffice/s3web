@@ -2,6 +2,7 @@ package uk.me.krupa.s3web.service
 
 import io.micronaut.context.annotation.Property
 import io.micronaut.context.annotation.Requires
+import io.reactivex.Flowable
 import io.reactivex.Maybe
 import io.reactivex.Single
 import mu.KotlinLogging
@@ -11,9 +12,7 @@ import software.amazon.awssdk.core.async.AsyncRequestBody
 import software.amazon.awssdk.core.async.AsyncResponseTransformer
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3AsyncClient
-import software.amazon.awssdk.services.s3.model.GetObjectRequest
-import software.amazon.awssdk.services.s3.model.PutObjectRequest
-import software.amazon.awssdk.services.s3.model.ServerSideEncryption
+import software.amazon.awssdk.services.s3.model.*
 import java.net.URI
 import javax.inject.Singleton
 
@@ -38,6 +37,7 @@ class AsyncS3Backend(
             .serviceConfiguration {
                 // TODO: https://github.com/aws/aws-sdk-java-v2/issues/953
                 it.checksumValidationEnabled(false)
+                it.pathStyleAccessEnabled(true)
             }
             .endpointOverride(endpoint)
             .region(Region.of(region))
@@ -45,7 +45,13 @@ class AsyncS3Backend(
             .build()
 
     override fun deleteObject(path: String): Single<Boolean> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        return DeleteObjectRequest.builder()
+                .bucket(bucketName)
+                .key(path)
+                .build()
+                .let { s3.deleteObject(it) }
+                .let { Single.fromFuture(it) }
+                .map { true }
     }
 
     override fun uploadObject(path: String, data: ByteArray): Single<String> {
@@ -72,7 +78,33 @@ class AsyncS3Backend(
                 .map { it.asByteArray() }
     }
 
+    fun doListFiles(prefix: String, marker: String? = null): Flowable<ListObjectsResponse> {
+        return ListObjectsRequest.builder()
+                .bucket(bucketName)
+                .prefix(prefix)
+                .delimiter("/")
+                .let { if (marker != null) it.marker(marker) else it }
+                .build()
+                .let { s3.listObjects(it) }
+                .let { Flowable.fromFuture(it) }
+                .flatMap { resp ->
+                    if (resp.isTruncated) {
+                        Flowable.just(resp).concatWith(Flowable.defer {
+                            doListFiles(prefix, resp.contents().last().key())
+                        })
+                    } else {
+                        Flowable.just(resp)
+                    }
+                }
+    }
+
     override fun listFiles(path: String): Maybe<List<String>> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        val prefix = path.removePrefix("/")
+        return doListFiles(prefix, null)
+                .map {
+                    it.commonPrefixes().map { it.prefix() } + it.contents().map { it.key() }
+                }.map {
+                    it.map { it.removePrefix(prefix) }
+                }.reduce { a, b -> a + b }
     }
 }
