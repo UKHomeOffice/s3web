@@ -21,7 +21,7 @@ object TarballExtractorSpec: Spek({
         val backend = StubBackend()
         val subjectUnderTest = TarballExtractor(backend)
         val faker = Faker()
-        val expectedContents = (1..20).map { faker.file().fileName().toString() to UUID.randomUUID().toString() }.toMap()
+        val expectedContents = (1..6000).map { faker.file().fileName().toString() to UUID.randomUUID().toString() }.toMap()
 
         describe("a valid tarball") {
             val underlying = ByteArrayOutputStream()

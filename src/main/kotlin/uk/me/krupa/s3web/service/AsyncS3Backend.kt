@@ -22,7 +22,7 @@ private val logger = KotlinLogging.logger {  }
 @Requires(property = "backend.mode", value = "s3", defaultValue = "s3")
 class AsyncS3Backend(
         @Property(name = "aws.s3.region") val region: String,
-        @Property(name = "aws.s3.buckety") val bucketName: String,
+        @Property(name = "aws.s3.bucket") val bucketName: String,
         @Property(name = "aws.access.key.id") val accessKeyId: String,
         @Property(name = "aws.secret.access.key") val secretAccessKey: String,
         @Property(name = "aws.s3.kms.key.id") val kmsKeyId: String? = null,

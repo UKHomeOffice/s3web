@@ -1,5 +1,6 @@
 package uk.me.krupa.s3web
 
+import io.micronaut.context.annotation.Property
 import io.micronaut.http.*
 import io.micronaut.http.annotation.*
 import io.netty.buffer.ByteBuf
@@ -12,9 +13,10 @@ import uk.me.krupa.s3web.service.Backend
 import uk.me.krupa.s3web.service.TarballExtractor
 import uk.me.krupa.s3web.service.ZipExtractor
 import java.io.ByteArrayInputStream
+import java.io.File
 import java.util.zip.GZIPInputStream
 import java.util.zip.ZipInputStream
-import javax.activation.MimetypesFileTypeMap
+import javax.activation.FileTypeMap
 import javax.validation.constraints.Size
 
 fun ByteBuf.directToArray(): ByteArray {
@@ -27,7 +29,9 @@ fun ByteBuf.directToArray(): ByteArray {
 class SimpleUploadController(
         private val backend: Backend,
         private val tarballExtractor: TarballExtractor,
-        val zipExtractor: ZipExtractor) {
+        val zipExtractor: ZipExtractor,
+        @Property(name = "mimetype") val mimeTypes: Map<String,String>
+) {
 
     val storage = mutableMapOf<String,ByteArray>()
 
@@ -38,11 +42,22 @@ class SimpleUploadController(
     }
 
     @Get("{path:.*}")
-    fun getAny(path: String): Maybe<MutableHttpResponse<Any>> {
+    fun getAny(path: String, request: HttpRequest<String>): Maybe<MutableHttpResponse<Any>> {
         logger.info { "GET from $path" }
-        val mimeType = MimetypesFileTypeMap.getDefaultFileTypeMap().getContentType(path)
+
+        val host = request.headers[HttpHeaders.HOST] ?: "localhost:8080"
+
+        val mimeType =
+                mimeTypes.getOrElse(File(path).extension.toLowerCase()) { FileTypeMap.getDefaultFileTypeMap().getContentType(path) }
+
         return backend.getObject("/$path").map { HttpResponse.ok<Any>(it).header(HttpHeaders.CONTENT_TYPE, mimeType) }.switchIfEmpty(Maybe.defer {
-            backend.listFiles("/$path").map { HttpResponse.ok<Any>(it).header(HttpHeaders.CONTENT_TYPE, "application/json") }
+            backend.listFiles("/$path")
+                    .map {
+                        it.map {
+                            entry -> "http://$host/${path.removePrefix("/")}/${entry.removePrefix("/")}"
+                        }
+                    }
+                    .map { HttpResponse.ok<Any>(it).header(HttpHeaders.CONTENT_TYPE, "application/json") }
                     .onErrorReturn { HttpResponse.badRequest() }
         })
     }
@@ -65,4 +80,4 @@ class SimpleUploadController(
 
 private val logger = KotlinLogging.logger {  }
 
-const val MAX_FILE_SIZE = 10 * 1024 * 1024
+const val MAX_FILE_SIZE = 100 * 1024 * 1024
