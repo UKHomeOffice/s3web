@@ -1,5 +1,6 @@
 package uk.me.krupa.s3web
 
+import io.micronaut.context.annotation.Parameter
 import io.micronaut.context.annotation.Property
 import io.micronaut.http.*
 import io.micronaut.http.annotation.*
@@ -54,8 +55,13 @@ class SimpleUploadController(
             backend.listFiles("/$path")
                     .map {
                         it.map {
-                            entry -> "http://$host/${path.removePrefix("/")}/${entry.removePrefix("/")}"
-                        }
+                            entry ->
+                                if (path == "") {
+                                    "http://$host/${entry.removePrefix("/")}"
+                                } else {
+                                    "http://$host/${path.removePrefix("/")}/${entry.removePrefix("/")}"
+                                }
+                        }.sorted()
                     }
                     .map { HttpResponse.ok<Any>(it).header(HttpHeaders.CONTENT_TYPE, "application/json") }
                     .onErrorReturn { HttpResponse.badRequest() }
@@ -63,7 +69,7 @@ class SimpleUploadController(
     }
 
     @Put("{path:.*}", consumes = [MediaType.APPLICATION_OCTET_STREAM, MediaType.TEXT_PLAIN] )
-    fun putAny(path: String, @Size(max = MAX_FILE_SIZE) @Body data: CompositeByteBuf): Single<MutableHttpResponse<MutableList<String>>>? {
+    fun putAny(path: String, @Parameter() @Size(max = MAX_FILE_SIZE) @Body data: CompositeByteBuf): Single<MutableHttpResponse<MutableList<String>>>? {
         logger.info { "PUT to $path" }
         val flat = data.map { it.directToArray() }.map { it.toList() }.flatten().toByteArray()
 
