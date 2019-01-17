@@ -55,8 +55,9 @@ object SimplePutGetSpec: Spek({
 
                     rsp.header(HttpHeaders.CONTENT_TYPE) shouldBe "application/json"
                     rsp.body() shouldNotBe null
+                    val prefix = """http://${embeddedServer.host}:${embeddedServer.port}"""
                     rsp.body()?.map { it.toString() }?.let {
-                        it shouldContain pathSpec.fileName.toString()
+                        it shouldContain prefix + pathSpec.toString()
                     }
                 }
 

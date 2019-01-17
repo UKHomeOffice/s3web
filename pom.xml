@@ -391,6 +391,7 @@
           </dependency>
         </dependencies>
         <configuration>
+          <argLine>-Xmx1024m -Xms1024m -Djdk.net.URLClassPath.disableClassPathURLCheck=true</argLine>
           <includes>
             <include>**/*Spec.*</include>
           </includes>
