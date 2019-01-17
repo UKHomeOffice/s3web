@@ -2,6 +2,7 @@ micronaut:
     application:
         name: s3web
     server:
+        port: 3000
         maxRequestSize: 100MB
         multipart:
             maxFileSize: 100MB

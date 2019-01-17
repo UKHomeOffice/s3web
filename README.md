@@ -2,6 +2,8 @@
 
 Web interface that allows simple HTTP-based GET and PUT access to an S3 bucket with unarchiving capability.
 
+Runs on port 3000.
+
 This application provides no front-end security for either read or write operations and is intended to be put behind
 an authenticated gatway such as https://github.com/keycloak/keycloak-gatekeeper.
 
