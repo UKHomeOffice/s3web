@@ -32,7 +32,8 @@ class SimpleUploadController(
         private val backend: Backend,
         private val tarballExtractor: TarballExtractor,
         val zipExtractor: ZipExtractor,
-        @Property(name = "mimetype") val mimeTypes: Map<String,String>
+        @Property(name = "mimetype") val mimeTypes: Map<String,String>,
+        @Property(name = "external.endpoint") val externalEndpoint: String?
 ) {
 
     @Delete("{path:.*}")
@@ -45,7 +46,7 @@ class SimpleUploadController(
     fun getAny(path: String, request: HttpRequest<String>): Maybe<MutableHttpResponse<Any>> {
         logger.info { "GET from $path" }
 
-        val host = request.headers[HttpHeaders.HOST] ?: "localhost:8080"
+        val root = externalEndpoint ?: "http://${request.headers[HttpHeaders.HOST]}" ?: "http://localhost:8080"
 
         val mimeType =
                 mimeTypes.getOrElse(File(path).extension.toLowerCase()) { FileTypeMap.getDefaultFileTypeMap().getContentType(path) }
@@ -58,9 +59,9 @@ class SimpleUploadController(
                         it.map {
                             entry ->
                             if (path == "") {
-                                "http://$host/${entry.removePrefix("/")}"
+                                "$root/${entry.removePrefix("/")}"
                             } else {
-                                "http://$host/${path.removePrefix("/")}/${entry.removePrefix("/")}"
+                                "$root/${path.removePrefix("/")}/${entry.removePrefix("/")}"
                             }
                         }.sorted()
                     }
@@ -81,9 +82,9 @@ class SimpleUploadController(
                                 .map {
                                     it.map { entry ->
                                         if (path == "") {
-                                            "http://$host/${entry.removePrefix("/")}"
+                                            "$root/${entry.removePrefix("/")}"
                                         } else {
-                                            "http://$host/${path.removePrefix("/")}/${entry.removePrefix("/")}"
+                                            "$root/${path.removePrefix("/")}/${entry.removePrefix("/")}"
                                         }
                                     }.sorted()
                                 }
