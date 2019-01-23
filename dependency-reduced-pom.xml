@@ -5,6 +5,7 @@
   <artifactId>s3web</artifactId>
   <version>0.1</version>
   <build>
+    <testSourceDirectory>src/test/kotlin</testSourceDirectory>
     <plugins>
       <plugin>
         <artifactId>maven-shade-plugin</artifactId>
@@ -58,7 +59,7 @@
       <plugin>
         <groupId>org.jetbrains.kotlin</groupId>
         <artifactId>kotlin-maven-plugin</artifactId>
-        <version>${kotlinVersion}</version>
+        <version>${kotlin.version}</version>
         <executions>
           <execution>
             <id>kapt</id>
@@ -85,13 +86,15 @@
           </execution>
           <execution>
             <id>compile</id>
+            <phase>compile</phase>
             <goals>
               <goal>compile</goal>
             </goals>
             <configuration>
               <sourceDirs>
-                <sourceDir>src/main/kotlin</sourceDir>
-                <sourceDir>src/main/java</sourceDir>
+                <source>target/generated-sources/kapt</source>
+                <source>target/generated-sources/kaptKotlin</source>
+                <source>src/main/kotlin</source>
               </sourceDirs>
             </configuration>
           </execution>
@@ -120,15 +123,10 @@
           </execution>
           <execution>
             <id>test-compile</id>
+            <phase>test-compile</phase>
             <goals>
               <goal>test-compile</goal>
             </goals>
-            <configuration>
-              <sourceDirs>
-                <sourceDir>src/test/kotlin</sourceDir>
-                <sourceDir>target/generated-sources/kapt/test</sourceDir>
-              </sourceDirs>
-            </configuration>
           </execution>
         </executions>
         <dependencies>
@@ -145,6 +143,7 @@
           <pluginOptions>
             <option>all-open:annotation=io.micronaut.aop.Around</option>
           </pluginOptions>
+          <jvmTarget>1.8</jvmTarget>
         </configuration>
       </plugin>
       <plugin>
@@ -427,6 +426,7 @@
     <kotlinVersion>1.3.11</kotlinVersion>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <micronaut.version>1.0.3</micronaut.version>
+    <kotlin.version>1.3.11</kotlin.version>
     <kotlin.compiler.jvmTarget>1.8</kotlin.compiler.jvmTarget>
   </properties>
 </project>

@@ -55,6 +55,7 @@ class AsyncS3Backend(
     }
 
     override fun uploadObject(path: String, data: ByteArray): Single<String> {
+        logger.info("PUT to S3: {}", path)
         return PutObjectRequest.builder()
                 .bucket(bucketName)
                 .contentLength(data.size.toLong())
@@ -65,6 +66,7 @@ class AsyncS3Backend(
                 .build()
                 .let { s3.putObject(it, AsyncRequestBody.fromBytes(data)) }
                 .let { Single.fromFuture(it) }
+                .doOnSuccess { logger.info("PUT to S3: {} - Done", path) }
                 .map { path }
     }
 

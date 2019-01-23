@@ -10,6 +10,7 @@ import io.reactivex.Maybe
 import io.reactivex.Single
 import mu.KotlinLogging
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 import uk.me.krupa.s3web.service.Backend
 import uk.me.krupa.s3web.service.TarballExtractor
 import uk.me.krupa.s3web.service.ZipExtractor
@@ -34,8 +35,6 @@ class SimpleUploadController(
         @Property(name = "mimetype") val mimeTypes: Map<String,String>
 ) {
 
-    val storage = mutableMapOf<String,ByteArray>()
-
     @Delete("{path:.*}")
     fun deleteAny(path: String): Single<HttpStatus> {
         logger.info { "DELETE $path" }
@@ -51,21 +50,47 @@ class SimpleUploadController(
         val mimeType =
                 mimeTypes.getOrElse(File(path).extension.toLowerCase()) { FileTypeMap.getDefaultFileTypeMap().getContentType(path) }
 
-        return backend.getObject("/$path").map { HttpResponse.ok<Any>(it).header(HttpHeaders.CONTENT_TYPE, mimeType) }.switchIfEmpty(Maybe.defer {
-            backend.listFiles("/$path")
+        if (path == "favicon.ico") {
+            return Maybe.just(HttpResponse.notFound())
+        } else if (path == "" || path.endsWith("/")) {
+            return backend.listFiles("/$path")
                     .map {
                         it.map {
                             entry ->
-                                if (path == "") {
-                                    "http://$host/${entry.removePrefix("/")}"
-                                } else {
-                                    "http://$host/${path.removePrefix("/")}/${entry.removePrefix("/")}"
-                                }
+                            if (path == "") {
+                                "http://$host/${entry.removePrefix("/")}"
+                            } else {
+                                "http://$host/${path.removePrefix("/")}/${entry.removePrefix("/")}"
+                            }
                         }.sorted()
                     }
                     .map { HttpResponse.ok<Any>(it).header(HttpHeaders.CONTENT_TYPE, "application/json") }
                     .onErrorReturn { HttpResponse.badRequest() }
-        })
+
+        } else {
+            return backend.getObject("/$path").map { HttpResponse.ok<Any>(it).header(HttpHeaders.CONTENT_TYPE, mimeType) }
+                    .onErrorResumeNext { exc: Throwable ->
+                        if (exc is NoSuchKeyException) {
+                            Maybe.empty()
+                        } else {
+                            Maybe.error(exc)
+                        }
+                    }
+                    .switchIfEmpty(Maybe.defer {
+                        backend.listFiles("/$path/")
+                                .map {
+                                    it.map { entry ->
+                                        if (path == "") {
+                                            "http://$host/${entry.removePrefix("/")}"
+                                        } else {
+                                            "http://$host/${path.removePrefix("/")}/${entry.removePrefix("/")}"
+                                        }
+                                    }.sorted()
+                                }
+                                .map { HttpResponse.ok<Any>(it).header(HttpHeaders.CONTENT_TYPE, "application/json") }
+                                .onErrorReturn { HttpResponse.badRequest() }
+                    })
+        }
     }
 
     @Put("{path:.*}", consumes = [MediaType.APPLICATION_OCTET_STREAM, MediaType.TEXT_PLAIN] )
@@ -78,7 +103,13 @@ class SimpleUploadController(
             path.endsWith(".tar.gz") -> tarballExtractor.uploadTar(path, TarArchiveInputStream(GZIPInputStream(ByteArrayInputStream(flat)))).toList()
             path.endsWith(".zip") -> zipExtractor.uploadZip(path, ZipInputStream(ByteArrayInputStream(flat))).toList()
             else -> backend.uploadObject("/$path", flat).map { listOf("/$path") }
-        }.map { HttpResponse.created(it) }.onErrorReturn { HttpResponse.badRequest() }
+        }
+                .map { HttpResponse.created(it) }
+                .onErrorResumeNext { exc ->
+                    logger.error("Failed to upload", exc)
+                    Single.error(exc)
+                }
+                .onErrorReturn { HttpResponse.badRequest() }
         return response
     }
 
