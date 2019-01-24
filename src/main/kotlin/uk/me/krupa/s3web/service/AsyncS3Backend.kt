@@ -60,8 +60,10 @@ class AsyncS3Backend(
                 .bucket(bucketName)
                 .contentLength(data.size.toLong())
                 .key(path)
-                .let {
-                    kmsKeyId?.run { it.serverSideEncryption(ServerSideEncryption.AWS_KMS).ssekmsKeyId(kmsKeyId) } ?: it
+                .let { config ->
+                    kmsKeyId?.run {
+                        config.serverSideEncryption(ServerSideEncryption.AWS_KMS).ssekmsKeyId(this)
+                    } ?: config
                 }
                 .build()
                 .let { s3.putObject(it, AsyncRequestBody.fromBytes(data)) }
@@ -80,11 +82,10 @@ class AsyncS3Backend(
                 .map { it.asByteArray() }
     }
 
-    fun doListFiles(prefix: String, marker: String? = null): Flowable<ListObjectsResponse> {
+    private fun doListFiles(prefix: String, marker: String? = null): Flowable<ListObjectsResponse> {
         return ListObjectsRequest.builder()
                 .bucket(bucketName)
                 .prefix(prefix)
-                .delimiter("/")
                 .let { if (marker != null) it.marker(marker) else it }
                 .build()
                 .let { s3.listObjects(it) }
@@ -106,7 +107,12 @@ class AsyncS3Backend(
                 .map {
                     it.commonPrefixes().map { it.prefix() } + it.contents().map { it.key() }
                 }.map {
-                    it.map { it.removePrefix(prefix) }
+                    it.map { path ->
+                        path.removePrefix(prefix)
+                    }.map {
+                        path -> if (path.contains('/')) { path.substring(0, path.indexOf('/') + 1) } else { path }
+                    }
                 }.reduce { a, b -> a + b }
+                .map { HashSet(it).toList() }
     }
 }
