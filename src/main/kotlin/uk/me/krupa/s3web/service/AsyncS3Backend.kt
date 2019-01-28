@@ -20,7 +20,7 @@ import javax.inject.Singleton
 private val logger = KotlinLogging.logger {  }
 
 @Singleton
-@Requires(property = "backend.mode", value = "s3", defaultValue = "s3")
+@Requires(property = "backend.mode", value = "s3-async", defaultValue = "s3")
 class AsyncS3Backend(
         @Property(name = "aws.s3.region") val region: String,
         @Property(name = "aws.s3.bucket") val bucketName: String,
