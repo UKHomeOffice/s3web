@@ -2,7 +2,6 @@ package uk.me.krupa.s3web.service
 
 import com.github.javafaker.Faker
 import io.kotlintest.matchers.collections.shouldContainExactlyInAnyOrder
-import io.kotlintest.matchers.collections.shouldContainInOrder
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldNotBe
 import mu.KotlinLogging
@@ -116,6 +115,7 @@ object BackendSpec: Spek({
                         val listing = factory()?.listFiles("/0/")?.blockingGet()
                         listing shouldNotBe null
                         listing?.let {
+                            it.size shouldBe 1009
                             it shouldContainExactlyInAnyOrder  (1..1009).map { "$it.txt" }
                         }
                     }

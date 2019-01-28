@@ -5,6 +5,7 @@ import io.micronaut.context.annotation.Requires
 import io.reactivex.Flowable
 import io.reactivex.Maybe
 import io.reactivex.Single
+import io.reactivex.processors.BehaviorProcessor
 import mu.KotlinLogging
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
@@ -82,38 +83,42 @@ class AsyncS3Backend(
                 .map { it.asByteArray() }
     }
 
-    private fun doListFiles(prefix: String, marker: String? = null): Flowable<ListObjectsResponse> {
-        return ListObjectsRequest.builder()
-                .bucket(bucketName)
-                .prefix(prefix)
-                .delimiter("/")
-                .let { if (marker != null) it.marker(marker) else it }
-                .build()
-                .let { s3.listObjects(it) }
-                .let { Flowable.fromFuture(it) }
-                .flatMap { resp ->
-                    if (resp.isTruncated) {
-                        Flowable.just(resp).concatWith(Flowable.defer {
-                            doListFiles(prefix, resp.contents().last().key())
-                        })
-                    } else {
-                        Flowable.just(resp)
-                    }
-                }
-    }
-
     override fun listFiles(path: String): Maybe<List<String>> {
         val prefix = path.removePrefix("/")
-        return doListFiles(prefix, null)
-                .map {
-                    it.commonPrefixes().map { it.prefix() } + it.contents().map { it.key() }
-                }.map {
-                    it.map { path ->
-                        path.removePrefix(prefix)
-                    }.map {
-                        path -> if (path.contains('/')) { path.substring(0, path.indexOf('/') + 1) } else { path }
+
+        val behaviour: BehaviorProcessor<String> = BehaviorProcessor.createDefault("")
+
+        return behaviour.concatMap { marker ->
+            ListObjectsRequest.builder()
+                    .bucket(bucketName)
+                    .prefix(prefix)
+                    .let {
+                        if (marker == "") {
+                            it
+                        } else {
+                            it.marker(marker)
+                        }
                     }
-                }.reduce { a, b -> a + b }
-                .map { HashSet(it).toList() }
+                    .build()
+                    .let { Flowable.fromFuture(s3.listObjects(it)) }
+        }.doOnNext { response ->
+            if (response.isTruncated) {
+                behaviour.onNext(response.contents().last().key())
+            } else {
+                behaviour.onComplete()
+            }
+        }.concatMapIterable {
+            it.contents()
+        }.map {
+            it.key()
+        }.map {
+            it.removePrefix(prefix)
+        }.map { path ->
+            if (path.contains('/')) {
+                path.substring(0, path.indexOf('/') + 1)
+            } else {
+                path
+            }
+        }.toList().toMaybe().map { it.toSet().toList() }
     }
 }
