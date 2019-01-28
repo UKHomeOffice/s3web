@@ -86,6 +86,7 @@ class AsyncS3Backend(
         return ListObjectsRequest.builder()
                 .bucket(bucketName)
                 .prefix(prefix)
+                .delimiter("/")
                 .let { if (marker != null) it.marker(marker) else it }
                 .build()
                 .let { s3.listObjects(it) }
