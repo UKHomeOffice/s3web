@@ -57,10 +57,15 @@ class AsyncS3Backend(
 
     override fun uploadObject(path: String, data: ByteArray): Single<String> {
         logger.info("PUT to S3: {}", path)
+        val uploadPath = if (path.startsWith("/")) {
+            path
+        } else {
+            "/$path"
+        }
         return PutObjectRequest.builder()
                 .bucket(bucketName)
                 .contentLength(data.size.toLong())
-                .key(path)
+                .key(uploadPath)
                 .let { config ->
                     kmsKeyId?.run {
                         config.serverSideEncryption(ServerSideEncryption.AWS_KMS).ssekmsKeyId(this)
@@ -74,9 +79,14 @@ class AsyncS3Backend(
     }
 
     override fun getObject(path: String): Maybe<ByteArray> {
+        val uploadPath = if (path.startsWith("/")) {
+            path
+        } else {
+            "/$path"
+        }
         return GetObjectRequest.builder()
                 .bucket(bucketName)
-                .key(path)
+                .key(uploadPath)
                 .build()
                 .let { s3.getObject(it, AsyncResponseTransformer.toBytes()) }
                 .let { Maybe.fromFuture(it) }
@@ -84,7 +94,7 @@ class AsyncS3Backend(
     }
 
     override fun listFiles(path: String): Maybe<List<String>> {
-        val prefix = path.removePrefix("/")
+        val prefix = path
 
         val behaviour: BehaviorProcessor<String> = BehaviorProcessor.createDefault("")
 
@@ -107,7 +117,7 @@ class AsyncS3Backend(
             } else {
                 behaviour.onComplete()
             }
-        }.concatMapIterable {
+        }.take(5).concatMapIterable {
             it.contents()
         }.map {
             it.key()

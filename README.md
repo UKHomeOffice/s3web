@@ -21,6 +21,7 @@ The following JVM System Properties are supported
 * aws.secret.access.key - Secret access key for the IAM credentials
 * aws.s3.kms.key.id - KMS key ID to use for encryption (optional - KMS will be disabled if this is not specified)
 * aws.s3.endpoint - S3 endpoint (optional, used for testing with tools like localstack)
+* external.endpoint - Base URL of the application (for WAF/gateway use)
 * logging.simple - By default this application uses the Logback Logstash JSON encoder.  Setting this property to
   "true" will use a simpler human-readable log format
 
