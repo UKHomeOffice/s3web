@@ -80,24 +80,26 @@ class V1SyncS3Backend(
     }
 
     override fun getObject(path: String): Maybe<ByteArray> {
-        val result = s3.getObject(bucketName, path)
         return try {
+            val result = s3.getObject(bucketName, path)
             result.objectContent.use {
                 Maybe.just(it.readBytes())
             }
-        } catch (e: SdkClientException) {
-            Maybe.error(e)
-        } catch (e: AmazonServiceException) {
+        } catch (e: AmazonS3Exception) {
             if (e.statusCode == HttpStatusCode.NOT_FOUND) {
                 Maybe.empty<ByteArray>()
             } else {
                 Maybe.error(e)
             }
+        } catch (e: SdkClientException) {
+            Maybe.error(e)
+        } catch (e: AmazonServiceException) {
+            Maybe.error(e)
         }
     }
 
     override fun listFiles(path: String): Maybe<List<String>> {
-        val prefix = path
+        val prefix = path.removeSuffix("/")
 
         val paths = mutableListOf<String>()
         var response: ObjectListing? = null
@@ -112,17 +114,18 @@ class V1SyncS3Backend(
                     paths.addAll(it.commonPrefixes)
                     paths.addAll(it.objectSummaries.map { it.key })
                 }
-                paths.addAll(response?.commonPrefixes ?: emptyList())
             } while (response?.isTruncated == true)
 
             Maybe.just(
-                    paths.map { path ->
-                        if (path.contains('/')) {
-                            path.substring(0, path.indexOf('/') + 1)
-                        } else {
-                            path
-                        }
-                    }
+                    paths
+                            .map { path.removePrefix(prefix) }
+                            .map { path ->
+                                if (path.contains('/')) {
+                                    path.substring(0, path.indexOf('/') + 1)
+                                } else {
+                                    path
+                                }
+                            }
             )
 
         } catch (e: SdkClientException) {
