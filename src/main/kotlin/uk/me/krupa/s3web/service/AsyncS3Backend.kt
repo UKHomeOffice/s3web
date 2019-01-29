@@ -58,11 +58,7 @@ class AsyncS3Backend(
 
     override fun uploadObject(path: String, data: ByteArray): Single<String> {
         logger.info("PUT to S3: {}", path)
-        val uploadPath = if (path.startsWith("/")) {
-            path
-        } else {
-            "/$path"
-        }
+        val uploadPath = path.removePrefix("/")
         return PutObjectRequest.builder()
                 .bucket(bucketName)
                 .contentLength(data.size.toLong())
@@ -78,15 +74,13 @@ class AsyncS3Backend(
                 .let { s3.putObject(it, AsyncRequestBody.fromBytes(data)) }
                 .let { Single.fromFuture(it) }
                 .doOnSuccess { logger.info("PUT to S3: {} - Done", path) }
-                .map { path }
+                .map {
+                    path
+                }
     }
 
     override fun getObject(path: String): Maybe<ByteArray> {
-        val uploadPath = if (path.startsWith("/")) {
-            path
-        } else {
-            "/$path"
-        }
+        val uploadPath = path.removePrefix("/")
         return GetObjectRequest.builder()
                 .bucket(bucketName)
                 .key(uploadPath)
@@ -97,7 +91,7 @@ class AsyncS3Backend(
     }
 
     override fun listFiles(path: String): Maybe<List<String>> {
-        val prefix = path
+        val prefix = path.removePrefix("/")
 
         val behaviour: BehaviorProcessor<String> = BehaviorProcessor.createDefault("")
 
