@@ -3,9 +3,10 @@ micronaut:
         name: s3web
     server:
         port: 3000
-        maxRequestSize: 100MB
+        max-request-size: 104857600
         multipart:
-            maxFileSize: 100MB
+            max-file-size: 104857600
+        log-handled-exceptions: true
 
 mimetype:
     js: application/javascript

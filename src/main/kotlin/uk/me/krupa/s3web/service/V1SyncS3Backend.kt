@@ -99,7 +99,7 @@ class V1SyncS3Backend(
     }
 
     override fun listFiles(path: String): Maybe<List<String>> {
-        val prefix = path.removeSuffix("/")
+        val prefix = path
 
         val paths = mutableListOf<String>()
         var response: ObjectListing? = null
@@ -118,7 +118,9 @@ class V1SyncS3Backend(
 
             Maybe.just(
                     paths
-                            .map { path.removePrefix(prefix) }
+                            .map {
+                                it.removePrefix(prefix)
+                            }
                             .map { path ->
                                 if (path.contains('/')) {
                                     path.substring(0, path.indexOf('/') + 1)
