@@ -26,6 +26,7 @@ class AsyncS3Backend(
         @Property(name = "aws.s3.bucket") val bucketName: String,
         @Property(name = "aws.access.key.id") val accessKeyId: String,
         @Property(name = "aws.secret.access.key") val secretAccessKey: String,
+        @Property(name = "aws.s3.kms.key.default") val useDefaultKmsKey: Boolean = false,
         @Property(name = "aws.s3.kms.key.id") val kmsKeyId: String? = null,
         @Property(name = "aws.s3.endpoint") val endpoint: URI? = null
 
@@ -67,9 +68,11 @@ class AsyncS3Backend(
                 .contentLength(data.size.toLong())
                 .key(uploadPath)
                 .let { config ->
-                    kmsKeyId?.run {
-                        config.serverSideEncryption(ServerSideEncryption.AWS_KMS).ssekmsKeyId(this)
-                    } ?: config
+                    when {
+                        kmsKeyId != null -> config.serverSideEncryption(ServerSideEncryption.AWS_KMS).ssekmsKeyId(kmsKeyId)
+                        useDefaultKmsKey -> config.serverSideEncryption(ServerSideEncryption.AWS_KMS)
+                        else -> config
+                    }
                 }
                 .build()
                 .let { s3.putObject(it, AsyncRequestBody.fromBytes(data)) }
