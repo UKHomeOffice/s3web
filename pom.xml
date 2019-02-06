@@ -4,7 +4,7 @@
   <artifactId>s3web</artifactId>
   <version>0.1</version>
   <properties>
-    <micronaut.version>1.0.3</micronaut.version>
+    <micronaut.version>1.0.4</micronaut.version>
     <jdk.version>8</jdk.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <exec.mainClass>uk.me.krupa.s3web.Application</exec.mainClass>
@@ -243,6 +243,7 @@
           <arguments>
             <argument>-noverify</argument>
             <argument>-XX:TieredStopAtLevel=1</argument>
+            <argument>-Dbackend.mode=stub</argument>
 
 
             <argument>-classpath</argument>
