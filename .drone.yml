@@ -10,12 +10,12 @@ pipeline:
     commands:
       - mkdir -p /root/.docker
       - 'echo "{ \"auths\": { \"$${DOCKER_REPO}\": { \"auth\": \"$(echo -n "$${ARTIFACTORY_USERNAME}:$${ARTIFACTORY_PASSWORD}" | base64 -w 0)\" } } }" > /root/.docker/config.json'
-      - "MAVEN_OPTS=-Xmx512m mvn dependency:resolve"
+      - "MAVEN_OPTS=-Xmx512m mvn -B --quiet dependency:resolve"
       - export DEPLOY_HASH=$${DRONE_TAG:-$${DRONE_COMMIT:0:8}}
-      - "MAVEN_OPTS=-Xmx512m mvn clean install -Dimage.tag=$${DEPLOY_HASH}"
+      - "MAVEN_OPTS=-Xmx512m mvn -B --quiet clean install -Dimage.tag=$${DEPLOY_HASH}"
     when:
       event:
-        - pull
+        - push
 
   docker_build:
     image: docker:18.03.0-ce
@@ -23,21 +23,24 @@ pipeline:
       - DOCKER_HOST=tcp://172.17.0.1:2375
       - DOCKER_REPO=docker.digital.homeoffice.gov.uk
     commands:
-      - docker build -t "$${DOCKER_REPO}/${DRONE_REPO,,}:$${DRONE_COMMIT:0:8}" .
+      - docker build --rm -t "$${DOCKER_REPO}/${DRONE_REPO,,}:$${DRONE_COMMIT:0:8}" .
+      - docker rmi "$${DOCKER_REPO}/${DRONE_REPO,,}:$${DRONE_COMMIT:0:8}"
     when:
       event:
-        - pull
+        - push
 
-  cleanup_build:
+  docker_push:
     image: docker:18.03.0-ce
-    environment:
-      - DOCKER_HOST=tcp://172.17.0.1:2375
-      - DOCKER_REPO_BASE=docker.digital.homeoffice.gov.uk
-    commands:
-      - docker rmi -f "$${DOCKER_REPO_BASE}/${DRONE_REPO,,}:$${DRONE_COMMIT:0:8}"
-    when:
-      status:
-        - success
-        - failure
-      event:
-        - pull
+      secrets:
+        - artifactory_username
+        - artifactory_password
+      environment:
+        - DOCKER_HOST=tcp://172.17.0.1:2375
+        - DOCKER_REPO=docker.digital.homeoffice.gov.uk
+      commands:
+        - docker login -u="$${ARTIFACTORY_USERNAME}" -p="$${ARTIFACTORY_PASSWORD}" "$${DOCKER_REPO}"
+        - docker build -t "$${DOCKER_REPO}/${DRONE_REPO,,}" .
+        - docker tag "$${DOCKER_REPO}/${DRONE_REPO,,}" "$${DOCKER_REPO}/${DRONE_REPO,,}:$${DRONE_TAG}"
+        - docker push "$${DOCKER_REPO}/${DRONE_REPO,,}"
+      when:
+        event: tag
