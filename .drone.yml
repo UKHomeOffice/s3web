@@ -9,7 +9,6 @@ pipeline:
       - artifactory_password
     commands:
       - mkdir -p /root/.docker
-      - 'echo "{ \"auths\": { \"$${DOCKER_REPO}\": { \"auth\": \"$(echo -n "$${ARTIFACTORY_USERNAME}:$${ARTIFACTORY_PASSWORD}" | base64 -w 0)\" } } }" > /root/.docker/config.json'
       - "MAVEN_OPTS=-Xmx512m mvn -B --quiet dependency:resolve"
       - export DEPLOY_HASH=$${DRONE_TAG:-$${DRONE_COMMIT:0:8}}
       - "MAVEN_OPTS=-Xmx512m mvn -B --quiet clean install -Dimage.tag=$${DEPLOY_HASH}"
@@ -18,29 +17,40 @@ pipeline:
         - push
 
   docker_build:
-    image: docker:18.03.0-ce
+    image: docker:18.06.1-ce
     environment:
       - DOCKER_HOST=tcp://172.17.0.1:2375
       - DOCKER_REPO=docker.digital.homeoffice.gov.uk
     commands:
-      - docker build --rm -t "$${DOCKER_REPO}/${DRONE_REPO,,}:$${DRONE_COMMIT:0:8}" .
-      - docker rmi "$${DOCKER_REPO}/${DRONE_REPO,,}:$${DRONE_COMMIT:0:8}"
+      - docker build -t s3web:$${DRONE_COMMIT_SHA} .
     when:
-      event:
-        - push
+      event: [push, tag]
 
-  docker_push:
-    image: docker:18.03.0-ce
+  image_to_quay:
+    image: docker:18.06.1-ce
+    secrets:
+      - docker_password
+    environment:
+      - DOCKER_HOST=tcp://172.17.0.1:2375
+    commands:
+      - docker login -u="ukhomeofficedigital+drone" -p=$${DOCKER_PASSWORD} quay.io
+      - docker tag s3web:$${DRONE_COMMIT_SHA} quay.io/ukhomeofficedigital/s3web:$${DRONE_COMMIT_SHA}
+      - docker tag s3web:$${DRONE_COMMIT_SHA} quay.io/ukhomeofficedigital/s3web:latest
+      - docker push quay.io/ukhomeofficedigital/s3web:$${DRONE_COMMIT_SHA}
+      - docker push quay.io/ukhomeofficedigital/s3web:latest
+    when:
+      event: push
+      branch: master
+
+    tagged_image_to_quay:
+      image: docker:18.06.1-ce
       secrets:
-        - artifactory_username
-        - artifactory_password
+        - docker_password
       environment:
         - DOCKER_HOST=tcp://172.17.0.1:2375
-        - DOCKER_REPO=docker.digital.homeoffice.gov.uk
       commands:
-        - docker login -u="$${ARTIFACTORY_USERNAME}" -p="$${ARTIFACTORY_PASSWORD}" "$${DOCKER_REPO}"
-        - docker build -t "$${DOCKER_REPO}/${DRONE_REPO,,}" .
-        - docker tag "$${DOCKER_REPO}/${DRONE_REPO,,}" "$${DOCKER_REPO}/${DRONE_REPO,,}:$${DRONE_TAG}"
-        - docker push "$${DOCKER_REPO}/${DRONE_REPO,,}"
+        - docker login -u="ukhomeofficedigital+drone" -p=$${DOCKER_PASSWORD} quay.io
+        - docker tag s3web:$${DRONE_COMMIT_SHA} quay.io/ukhomeofficedigital/s3web:$${DRONE_TAG}
+        - docker push quay.io/ukhomeofficedigital/s3web:$${DRONE_TAG}
       when:
         event: tag
