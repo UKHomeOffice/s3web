@@ -1,4 +1,4 @@
-package uk.me.krupa.s3web.service
+package org.gov.uk.homeoffice.digital.s3web.service
 
 import io.reactivex.BackpressureStrategy
 import io.reactivex.Flowable

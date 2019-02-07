@@ -1,4 +1,4 @@
-package uk.me.krupa.s3web
+package org.gov.uk.homeoffice.digital.s3web
 
 import io.micronaut.context.ApplicationContext
 import io.micronaut.http.client.HttpClient

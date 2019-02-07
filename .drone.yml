@@ -1,0 +1,43 @@
+pipeline:
+  build_and_test:
+    image: quay.io/ukhomeofficedigital/java8-mvn:v3.5.2.1
+    environment:
+      - DOCKER_HOST=tcp://172.17.0.1:2375
+      - DOCKER_REPO=docker.digital.homeoffice.gov.uk
+    secrets:
+      - artifactory_username
+      - artifactory_password
+    commands:
+      - mkdir -p /root/.docker
+      - 'echo "{ \"auths\": { \"$${DOCKER_REPO}\": { \"auth\": \"$(echo -n "$${ARTIFACTORY_USERNAME}:$${ARTIFACTORY_PASSWORD}" | base64 -w 0)\" } } }" > /root/.docker/config.json'
+      - "MAVEN_OPTS=-Xmx512m mvn dependency:resolve"
+      - export DEPLOY_HASH=$${DRONE_TAG:-$${DRONE_COMMIT:0:8}}
+      - "MAVEN_OPTS=-Xmx512m mvn clean install -Dimage.tag=$${DEPLOY_HASH}"
+    when:
+      event:
+        - pull
+
+  docker_build:
+    image: docker:18.03.0-ce
+    environment:
+      - DOCKER_HOST=tcp://172.17.0.1:2375
+      - DOCKER_REPO=docker.digital.homeoffice.gov.uk
+    commands:
+      - docker build -t "$${DOCKER_REPO}/${DRONE_REPO,,}:$${DRONE_COMMIT:0:8}" .
+    when:
+      event:
+        - pull
+
+  cleanup_build:
+    image: docker:18.03.0-ce
+    environment:
+      - DOCKER_HOST=tcp://172.17.0.1:2375
+      - DOCKER_REPO_BASE=docker.digital.homeoffice.gov.uk
+    commands:
+      - docker rmi -f "$${DOCKER_REPO_BASE}/${DRONE_REPO,,}:$${DRONE_COMMIT:0:8}"
+    when:
+      status:
+        - success
+        - failure
+      event:
+        - pull

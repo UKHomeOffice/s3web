@@ -1,4 +1,4 @@
-package uk.me.krupa.s3web.service
+package org.gov.uk.homeoffice.digital.s3web.service
 
 import io.micronaut.context.annotation.Property
 import io.micronaut.context.annotation.Requires

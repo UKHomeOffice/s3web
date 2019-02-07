@@ -1,5 +1,5 @@
 profile: service
-defaultPackage: uk.me.krupa
+defaultPackage: org.gov.uk.homeoffice.digital
 ---
 testFramework: spek
 sourceLanguage: kotlin
