@@ -4,9 +4,6 @@ pipeline:
     environment:
       - DOCKER_HOST=tcp://172.17.0.1:2375
       - DOCKER_REPO=docker.digital.homeoffice.gov.uk
-    secrets:
-      - artifactory_username
-      - artifactory_password
     commands:
       - mkdir -p /root/.docker
       - "MAVEN_OPTS=-Xmx512m mvn -B --quiet dependency:resolve"
